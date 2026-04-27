@@ -206,6 +206,11 @@ def make_modchg_basis(auxcell, smooth_eta):
 # kpti == kptj: s2 symmetry
 # kpti == kptj == 0 (gamma point): real
 def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
+    import datetime
+    def _ts(tag):
+        print(f"[{datetime.datetime.now().isoformat()}] _make_j3c: {tag}", flush=True)
+
+    _ts("ENTER — resetting weighted_coulG, constructing GDF object")
     from pyscf.pbc import df as gdf
     GDF.weighted_coulG = gdf.GDF.weighted_coulG
     mydf = GDF(ggdf.cell, ggdf.kpts)
@@ -216,6 +221,7 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
     # for newer versions mesh has to be properly initialized
     #if mydf.mesh is None:
     #    mydf.eta, mydf.mesh, cutoff = _guess_eta(auxcell, mydf.kpts)
+    _ts("PHASE 1 — fusing auxcell with compensating charge basis")
     fused_cell, fuse = fuse_auxcell(mydf, auxcell)
 
 
@@ -232,9 +238,11 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
     # Unlink swapfile to avoid trash
     swapfile = None
 
+    _ts("PHASE 2 — computing short-range 3-center integrals (int3c2e) into swap file")
     outcore._aux_e2(cell, fused_cell, fswap, 'int3c2e', aosym='s2',
                     kptij_lst=kptij_lst, dataname='j3c-junk', max_memory=max_memory)
     t1 = log.timer_debug1('3c2e', *t1)
+    _ts("PHASE 2 — done")
 
     nao = cell.nao_nr()
     naux = auxcell.nao_nr()
@@ -248,9 +256,11 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
     kptjs = kptij_lst[:,1]
     kpt_ji = kptjs - kptis
 
+    _ts("PHASE 3 — finding unique q-points from kptij_lst")
     uniq_kpts, uniq_index, uniq_inverse = unique_with_wrap_around(cell, kpt_ji) #unique(kpt_ji)
 
     log.debug('Num uniq kpts %d', len(uniq_kpts))
+    _ts(f"PHASE 3 — done: {len(uniq_kpts)} unique q-points")
     log.debug2('uniq_kpts %s', uniq_kpts)
     # j2c ~ (-kpt_ji | kpt_ji)
     # Generally speaking, the int2c2e integrals with lattice sum applied on
@@ -258,11 +268,13 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
     # with regular lattice sum unless the lattice sum vectors (from
     # cell.get_lattice_Ls) are symmetric. After adding the planewaves
     # contributions and fuse(fuse(j2c)), the output matrix is hermitian.
+    _ts("PHASE 4 — building 2-center Coulomb metric J2c (int2c2e + plane-wave long-range correction)")
     j2c = fused_cell.pbc_intor('int2c2e', hermi=0, kpts=uniq_kpts)
     max_memory = max(2000, mydf.max_memory - lib.current_memory()[0])
     blksize = max(2048, int(max_memory*.5e6/16/fused_cell.nao_nr()))
     log.debug2('max_memory %s (MB)  blocksize %s', max_memory, blksize)
     for k, kpt in enumerate(uniq_kpts):
+        _ts(f"PHASE 4 — J2c plane-wave correction for q-point {k}/{len(uniq_kpts)}: kpt={kpt}")
         coulG = mydf.weighted_coulG(kpt, False, mesh)
         for p0, p1 in lib.prange(0, ngrids, blksize):
             aoaux = ft_ao.ft_ao(fused_cell, Gv[p0:p1], None, b, gxyz[p0:p1], Gvbase, kpt).T
@@ -287,6 +299,7 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
         j2c[k] = (j2c[k] + j2c[k].conj().T) * .5
         fswap['j2c/%d'%k] = fuse(fuse(j2c[k]).T).T
     j2c = coulG = None
+    _ts("PHASE 4 — done: J2c metric built for all q-points")
 
     def cholesky_decomposed_metric(uniq_kptji_id):
         j2c = numpy.asarray(fswap['j2c/%d'%uniq_kptji_id])
@@ -316,6 +329,7 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
             j2ctag = 'eig'
         return j2c, j2c_negative, j2ctag
 
+    _ts(f"PHASE 5 — opening output file {cderi_file} and entering make_kpt loop")
     feri = h5py.File(cderi_file, 'w')
     feri['j3c-kptij'] = kptij_lst
     nsegs = len(fswap['j3c-junk/0'])
@@ -390,8 +404,10 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
         cols = [sh_range[2] for sh_range in shranges]
         locs = numpy.append(0, numpy.cumsum(cols))
         tasks = zip(locs[:-1], locs[1:])
+        _ts(f"PHASE 6 — make_kpt q={uniq_kptji_id}: contracting 3-center integrals, {len(shranges)} shell ranges, {nkptj} k-points")
         for istep, (j3cR, j3cI) in enumerate(lib.map_with_prefetch(load, tasks)):
             bstart, bend, ncol = shranges[istep]
+            _ts(f"PHASE 6 — make_kpt q={uniq_kptji_id}: shell block {istep+1}/{len(shranges)}, AO [{bstart}:{bend}]")
             log.debug1('int3c2e [%d/%d], AO [%d:%d], ncol = %d',
                        istep+1, len(shranges), bstart, bend, ncol)
             if aosym == 's2':
@@ -462,8 +478,10 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
     done = numpy.zeros(len(uniq_kpts), dtype=bool)
     for k, kpt in enumerate(uniq_kpts):
         if done[k]:
+            _ts(f"PHASE 5 — q-point {k}/{len(uniq_kpts)} already done via time-reversal symmetry, skipping")
             continue
 
+        _ts(f"PHASE 5 — q-point {k}/{len(uniq_kpts)}: Cholesky decomposition of J2c metric")
         log.debug1('Cholesky decomposition for j2c at kpt %s', k)
         cholesky_j2c = cholesky_decomposed_metric(k)
 
@@ -488,6 +506,7 @@ def _make_j3c(ggdf, cell, auxcell, kptij_lst, cderi_file):
                 make_kpt(uniq_kptji_id, cholesky_j2c)
         done[uniq_kptji_ids] = True
 
+    _ts(f"PHASE 7 — closing output file {cderi_file}, _make_j3c complete")
     feri.close()
 
 
