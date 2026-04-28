@@ -22,8 +22,8 @@ jobs:
         env:
           CIBW_BUILD: cp38-* cp39-* cp310-* cp311-* cp312-*
           CIBW_ARCHS: ${{ matrix.plat.arch }}
-          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux2014"
-          CIBW_BEFORE_ALL_LINUX: "sed -i -e 's/mirrorlist/#mirrorlist/g' -e 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*; yum install -y hdf5-devel openblas-devel"
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+          CIBW_BEFORE_ALL_LINUX: "dnf install -y epel-release; dnf install -y hdf5-devel openblas-devel"
 
           CIBW_ENVIRONMENT_MACOS: >
             GMP_DIR=${{ matrix.plat.homebrew }}
