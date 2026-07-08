@@ -1,6 +1,10 @@
 name: Continuation CI/CD
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  release:
+    types: [published]
 
 jobs:
   build_wheels:
@@ -8,10 +12,9 @@ jobs:
     runs-on: ${{ matrix.plat.os }}
     strategy:
       matrix:
-        # macos-13 is an intel runner, macos-14 is apple silicon
-        plat: 
+        # macos-14 is apple silicon (arm64); the retired macos-13 intel runner is dropped
+        plat:
         - { os: ubuntu-latest, target: "", arch: x86_64, homebrew: ''}
-        - { os: macos-13, target: "13.0" , arch: x86_64, homebrew: '/usr/local'}
         - { os: macos-14, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
 
     steps:
@@ -22,8 +25,9 @@ jobs:
         env:
           CIBW_BUILD: cp38-* cp39-* cp310-* cp311-* cp312-*
           CIBW_ARCHS: ${{ matrix.plat.arch }}
-          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux2014"
-          CIBW_BEFORE_ALL_LINUX: "sed -i -e 's/mirrorlist/#mirrorlist/g' -e 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*; yum install -y hdf5-devel openblas-devel"
+          # Manylinux image and Linux before-all come from pyproject.toml
+          # (manylinux_2_28 + dnf hdf5-devel/openblas-devel). The old
+          # manylinux2014 image ships HDF5 1.8.12, which current h5py rejects.
 
           CIBW_ENVIRONMENT_MACOS: >
             GMP_DIR=${{ matrix.plat.homebrew }}
@@ -39,19 +43,18 @@ jobs:
     runs-on: ${{ matrix.plat.os }}
     strategy:
       matrix:
-        # macos-13 is an intel runner, macos-14 is apple silicon
-        plat: 
+        # macos-14 is apple silicon (arm64); the retired macos-13 intel runner is dropped
+        plat:
         - { os: ubuntu-latest, target: "", arch: x86_64, homebrew: ''}
-        - { os: macos-13, target: "13.0" , arch: x86_64, homebrew: '/usr/local'}
         - { os: macos-14, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.23.0
+        uses: pypa/cibuildwheel@v3.4.1
         env:
-          CIBW_BUILD: cp313-*
+          CIBW_BUILD: cp313-* cp314-*
           CIBW_ARCHS: ${{ matrix.plat.arch }}
 
           CIBW_ENVIRONMENT_MACOS: >
@@ -85,9 +88,9 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
-    #if: github.event_name == 'release' && github.event.action == 'published'
-    # or, alternatively, upload to PyPI on every tag starting with 'v' (remove on: release above to use this)
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+    # Upload to PyPI only on a published GitHub Release (a deliberate,
+    # gated action - safer than uploading on any tag push).
+    if: github.event_name == 'release'
     steps:
       - uses: actions/download-artifact@v4
         with:
