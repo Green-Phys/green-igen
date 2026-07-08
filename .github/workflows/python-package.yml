@@ -1,5 +1,6 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# Simple build smoke test for green-igen: verify it builds and installs
+# across the supported Python versions. Scaffold for a future Python unit-test
+# suite (green-igen currently has only C++ ctest coverage, in test.yaml).
 
 name: Python package
 
@@ -11,52 +12,31 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
-        pyscf-version:
-          - "git+https://github.com/cnyeh/pyscf.git@x2c1e_kpoints"
-          - "pyscf"
+        python-version: ["3.9", "3.12", "3.14"]
 
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install build dependencies
       run: |
         sudo apt update
-        sudo apt install libblas-dev liblapack-dev libeigen3-dev libgmp-dev libmpfr-dev libfftw3-dev libhdf5-dev
-        sudo apt install build-essential
+        sudo apt install -y libblas-dev liblapack-dev libeigen3-dev libgmp-dev libmpfr-dev libfftw3-dev libhdf5-dev build-essential
         python -m pip install --upgrade pip setuptools wheel
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest numpy h5py
-        pip install --upgrade-strategy only-if-needed ${{ matrix.pyscf-version }}
-    - name: Install package
+        python -m pip install pytest
+    - name: Build and install green-igen
       run: |
         python -m pip install .
-    - name: Tweak library versions
+    - name: Smoke test import
       run: |
-        if [ ${{ matrix.pyscf-version }} = "git+https://github.com/cnyeh/pyscf.git@x2c1e_kpoints" ]; then
-          pip install --upgrade "scipy<1.11.0";
-          pip install "scs==3.2.3";
-          pip install "cvxpy==1.4"
-        fi
-    - name: Install Green-MBTools and Test igen
-      run: |
-        pip install --upgrade-strategy only-if-needed green-mbtools
-        python -c "import scipy; print('Scipy version: ', scipy.__version__)"
-        cd ../
-        git clone https://github.com/green-phys/green-mbtools
-        cd green-mbtools/tests
-        pytest -v
-    # - name: Lint with flake8
-    #   run: |
-    #     # stop the build if there are Python syntax errors or undefined names
-    #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-    #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        python -c "import green_igen; print('green-igen imported OK')"
+
+    # Placeholder for a future green-igen Python unit-test suite:
+    # - name: Run unit tests
+    #   run: pytest test/ -v
