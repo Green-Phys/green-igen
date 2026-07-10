@@ -1121,7 +1121,7 @@ def fuse_auxcell(mydf, auxcell):
 
     aux_loc = auxcell.ao_loc_nr()
     naux = aux_loc[-1]
-    modchg_offset = -numpy.ones((chgcell.natm,8), dtype=int)
+    modchg_offset = -numpy.ones((chgcell.natm,9), dtype=int)
     smooth_loc = chgcell.ao_loc_nr()
     for i in range(chgcell.nbas):
         ia = chgcell.bas_atom(i)
