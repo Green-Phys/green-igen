@@ -11,6 +11,11 @@ endif ()
 set(GREEN_RELEASE origin/main)
 
 set(CMAKE_CXX_STANDARD 17)
+# The C sources (and the libcint v4.4.6 fetched below) predate C23, which GCC 15 uses by default: there, an empty parameter
+# list "()" means "no arguments", so libcint's function-pointer tables fail with -Wincompatible-pointer-types errors.
+# Build all C code as C17 with GNU extensions (gnu17), the default of GCC 8-14. Set before FetchContent so libcint inherits it.
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_EXTENSIONS ON)
 
 find_package(BLAS REQUIRED)
 find_package(OpenMP)
