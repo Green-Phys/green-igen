@@ -13,9 +13,10 @@ jobs:
     strategy:
       matrix:
         # macos-latest is apple silicon (arm64); the retired macos-13 intel runner is dropped
+        # macOS wheels target macOS 26+: Homebrew's gmp/mpfr on macos-latest require it.
         plat:
         - { os: ubuntu-latest, target: "", arch: x86_64, homebrew: ''}
-        - { os: macos-latest, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
+        - { os: macos-latest, target: "26.0" , arch: arm64, homebrew: '/opt/homebrew'}
 
     steps:
       - uses: actions/checkout@v7
@@ -46,7 +47,7 @@ jobs:
         # macos-latest is apple silicon (arm64); the retired macos-13 intel runner is dropped
         plat:
         - { os: ubuntu-latest, target: "", arch: x86_64, homebrew: ''}
-        - { os: macos-latest, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
+        - { os: macos-latest, target: "26.0" , arch: arm64, homebrew: '/opt/homebrew'}
 
     steps:
       - uses: actions/checkout@v7
