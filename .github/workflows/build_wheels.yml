@@ -12,10 +12,10 @@ jobs:
     runs-on: ${{ matrix.plat.os }}
     strategy:
       matrix:
-        # macos-14 is apple silicon (arm64); the retired macos-13 intel runner is dropped
+        # macos-15 is apple silicon (arm64); the retired macos-13 intel runner is dropped
         plat:
         - { os: ubuntu-latest, target: "", arch: x86_64, homebrew: ''}
-        - { os: macos-14, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
+        - { os: macos-15, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
 
     steps:
       - uses: actions/checkout@v7
@@ -43,10 +43,10 @@ jobs:
     runs-on: ${{ matrix.plat.os }}
     strategy:
       matrix:
-        # macos-14 is apple silicon (arm64); the retired macos-13 intel runner is dropped
+        # macos-15 is apple silicon (arm64); the retired macos-13 intel runner is dropped
         plat:
         - { os: ubuntu-latest, target: "", arch: x86_64, homebrew: ''}
-        - { os: macos-14, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
+        - { os: macos-15, target: "14.0" , arch: arm64, homebrew: '/opt/homebrew'}
 
     steps:
       - uses: actions/checkout@v7
