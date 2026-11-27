@@ -10,6 +10,29 @@ on:
     branches: [ "main" ]
 
 jobs:
+  build-macos:
+    # Build and import-test on the newest macOS runner (Apple silicon).
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install build dependencies
+        run: |
+          brew install eigen gmp mpfr fftw hdf5 openblas
+          python -m pip install --upgrade pip setuptools wheel
+      - name: Build and install green-igen
+        run: |
+          # Match green-mbtools' cap (f003770): PySCF 2.15 removed GDF._make_j3c.
+          # 2.15.1 also lacks a macOS arm64 wheel (pyscf/pyscf#3659).
+          pip install "pyscf<2.15"
+          python -m pip install .
+      - name: Smoke test import
+        run: |
+          python -c "import green_igen; print('green-igen imported OK')"
+
   build:
     runs-on: ubuntu-latest
     strategy:

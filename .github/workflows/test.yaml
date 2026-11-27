@@ -12,14 +12,17 @@ jobs:
     strategy:
       fail-fast: false
 
-    runs-on: self-hosted
-
+    runs-on: [ self-hosted, ift-vm ]
     steps:
     - uses: actions/checkout@v7
 
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openmpi-bin libopenmpi-dev libhdf5-dev libeigen3-dev libopenblas-dev lcov libgmp-dev libmpfr-dev libfftw3-dev
+
     - name: Build
       run: |
-        module load BuildEnv/gcc-12.2.0.lua gmp/6.2.1;
         mkdir build && cd build && cmake  -DCMAKE_CXX_FLAGS=" --coverage -fno-inline -fno-inline-small-functions -fno-default-inline -fprofile-arcs -ftest-coverage " ..;
         make -j2 || make -j1 VERBOSE=1
 
@@ -27,6 +30,5 @@ jobs:
       env:
         HDF5_USE_FILE_LOCKING: 'FALSE'
       run: |
-        module load BuildEnv/gcc-12.2.0.lua gmp/6.2.1;
         cd build;
         ctest -j4 --output-on-failure
