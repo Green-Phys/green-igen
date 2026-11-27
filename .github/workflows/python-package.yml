@@ -1,6 +1,5 @@
-# Simple build smoke test for green-igen: verify it builds and installs
-# across the supported Python versions. Scaffold for a future Python unit-test
-# suite (green-igen currently has only C++ ctest coverage, in test.yaml).
+# Build, install and test green-igen across the supported Python versions.
+# Python unit tests live in test/; C++ tests run via ctest in test.yaml.
 
 name: Python package
 
@@ -59,7 +58,6 @@ jobs:
     - name: Smoke test import
       run: |
         python -c "import green_igen; print('green-igen imported OK')"
-
-    # Placeholder for a future green-igen Python unit-test suite:
-    # - name: Run unit tests
-    #   run: pytest test/ -v
+    - name: Run unit tests
+      run: |
+        python -m pytest test/ -v
