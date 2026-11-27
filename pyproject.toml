@@ -5,11 +5,11 @@ build-backend = "scikit_build_core.build"
 [tool.scikit-build]
 cmake.define = {"GREEN_PYTHON"="ON"}
 wheel.packages = ["python/green_igen"]
-cmake.verbose = true
+build.verbose = true
 
 [project]
 name = "green-igen"
-version = "0.2.7"
+version = "0.2.8"
 authors = [
   { name="Sergei Iskakov" },
   { name="Gaurav Harsha", email="gharsha@umich.edu" },
